@@ -3,7 +3,11 @@ import cors from "cors";
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+
+// accept normal JSON
+app.use(express.json({ limit: "1mb" }));
+// ALSO accept text/plain or unknown content-type (MT4 sometimes does this)
+app.use(express.text({ type: "*/*", limit: "1mb" }));
 
 const PORT = process.env.PORT || 10000;
 const SHARED_SECRET = process.env.SHARED_SECRET || "Armstrong_1980-()@";
@@ -15,12 +19,18 @@ let eventsCache = [];
 
 // MT4 posts here
 app.post("/update_signals", (req, res) => {
-  // for debugging — you can remove later
-  // console.log("Incoming body:", req.body);
+  let body = req.body;
 
-  const body = req.body;
+  // if MT4 sent text, try to turn it into JSON
+  if (typeof body === "string") {
+    try {
+      body = JSON.parse(body);
+    } catch (e) {
+      return res.status(400).json({ error: "invalid json" });
+    }
+  }
 
-  // auth check
+  // now do the auth check
   if (!body.secret || body.secret !== SHARED_SECRET) {
     return res.status(401).json({ error: "unauthorized" });
   }
@@ -37,18 +47,18 @@ app.post("/update_signals", (req, res) => {
     time: new Date().toISOString(),
   };
 
-  // keep latest 20
+  // keep latest 20 signals
   signals = [sig, ...signals].slice(0, 20);
 
   return res.json({ status: "ok", received: sig });
 });
 
-// dashboard GETs this
+// dashboard pulls here
 app.get("/signals", (req, res) => {
   res.json({ signals });
 });
 
-// static news for now
+// static news
 app.get("/news", (req, res) => {
   if (!newsCache.length) {
     newsCache = [
@@ -60,7 +70,7 @@ app.get("/news", (req, res) => {
   res.json({ news: newsCache });
 });
 
-// static events for now
+// static events
 app.get("/events", (req, res) => {
   if (!eventsCache.length) {
     eventsCache = [
@@ -77,5 +87,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log("SmartTrade server listening on port", PORT);
+  console.log("SmartTrade server listening on", PORT);
 });
