@@ -1,6 +1,5 @@
 import express from "express";
 import cors from "cors";
-import fetch from "node-fetch";
 
 const app = express();
 app.use(cors());
@@ -16,8 +15,12 @@ let eventsCache = [];
 
 // MT4 posts here
 app.post("/update_signals", (req, res) => {
+  // for debugging — you can remove later
+  // console.log("Incoming body:", req.body);
+
   const body = req.body;
 
+  // auth check
   if (!body.secret || body.secret !== SHARED_SECRET) {
     return res.status(401).json({ error: "unauthorized" });
   }
@@ -40,30 +43,30 @@ app.post("/update_signals", (req, res) => {
   return res.json({ status: "ok", received: sig });
 });
 
-// dashboard pulls from here
+// dashboard GETs this
 app.get("/signals", (req, res) => {
   res.json({ signals });
 });
 
-// news
+// static news for now
 app.get("/news", (req, res) => {
   if (!newsCache.length) {
     newsCache = [
       { title: "Fed officials reiterate data-dependent stance", tag: "High", time: "09:05" },
       { title: "EUR pressured after soft German data", tag: "Med", time: "09:22" },
-      { title: "Gold holds gains as dollar eases", tag: "Low", time: "09:34" }
+      { title: "Gold holds gains as dollar eases", tag: "Low", time: "09:34" },
     ];
   }
   res.json({ news: newsCache });
 });
 
-// economic events
+// static events for now
 app.get("/events", (req, res) => {
   if (!eventsCache.length) {
     eventsCache = [
       { title: "US CPI m/m", impact: "RED", time: "08:30" },
       { title: "ECB Minutes", impact: "AMBER", time: "09:00" },
-      { title: "BoE Gov speaks", impact: "YELLOW", time: "11:10" }
+      { title: "BoE Gov speaks", impact: "YELLOW", time: "11:10" },
     ];
   }
   res.json({ events: eventsCache });
@@ -73,4 +76,6 @@ app.get("/", (req, res) => {
   res.send("SmartTrade server is running ✅");
 });
 
-app.listen(PORT, () => console.log("SmartTrade server listening on", PORT));
+app.listen(PORT, () => {
+  console.log("SmartTrade server listening on port", PORT);
+});
